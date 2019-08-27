@@ -73,7 +73,7 @@ def makenetbn(dims, softmax=True, single=True):
     def forward(self, x):
       # per Alvin's recipe, apply relu everywhere but last layer
       for l in range(ndims - 2):
-        x = getattr(self, f'bn{l}')(F.leaky_relu(getattr(self,f 'fc{l}')(x), negative_slope=0.2))
+        x = getattr(self, f'bn{l}')(F.leaky_relu(getattr(self, f'fc{l}')(x), negative_slope=0.2))
 
       x = getattr(self, f'fc{ndims - 2}')(x)
 
