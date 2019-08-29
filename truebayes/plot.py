@@ -8,7 +8,7 @@ import torch
 
 from truebayes.geometry import xmid, xwid
 
-def plotgauss(xtrue, indicator, inputs, net=None, like=None, varx=None, istart=0, single=True):  
+def plotgauss(xtrue, indicator, inputs, net=None, like=None, varx=None, twodim=False, istart=0, single=True):  
   pp.figure(figsize=(12,8))
 
   if isinstance(like, types.FunctionType):
@@ -21,12 +21,29 @@ def plotgauss(xtrue, indicator, inputs, net=None, like=None, varx=None, istart=0
     
     netinput = inputs[istart+i:(istart+i+1),:]
     pars = net(netinput).detach().cpu().numpy().flatten()
-        
-    if len(pars) == 2:
-      pdf = np.exp(-0.5*(xmid - pars[0])**2/pars[1]**2) / math.sqrt(2*math.pi*pars[1]**2) * xwid
+    
+    if twodim:
+      dx  = pars[0::6] - xmid[:,np.newaxis]
+      Fxx = pars[1::6]**2
+    
+      # dy  = pars[2::6] - ymid
+      Fyy = pars[3::6]**2
+    
+      Fxy = np.arctan(pars[4::6]) / (0.5*math.pi) * pars[1::6] * pars[3::6]
+
+      Cxx = Fyy / (Fxx*Fyy - Fxy*Fxy)
+
+      weight = torch.softmax(torch.from_numpy(pars[5::6]),dim=0).numpy()
+      
+      pdf = np.sum(weight * np.exp(-0.5*dx**2/Cxx) / np.sqrt(2*math.pi*Cxx) * xwid, axis=1)
+
+      # logmod = scs.logsumexp(np.log(weight) - 0.5*(Fxx*dx*dx + Fyy*dy*dy + 2*Fxy*dx*dy) + 0.5*np.log(Fxx*Fyy - Fxy*Fxy), axis=2)
     else:
-      wg = torch.softmax(torch.from_numpy(pars[2::3]), dim=0).numpy()
-      pdf = np.sum(wg * np.exp(-0.5*(xmid[:,np.newaxis] - pars[0::3])**2/pars[1::3]**2) / np.sqrt(2*math.pi*pars[1::3]**2) * xwid, axis=1)
+      if len(pars) == 2:
+        pdf = np.exp(-0.5*(xmid - pars[0])**2/pars[1]**2) / math.sqrt(2*math.pi*pars[1]**2) * xwid
+      else:
+        wg = torch.softmax(torch.from_numpy(pars[2::3]), dim=0).numpy()
+        pdf = np.sum(wg * np.exp(-0.5*(xmid[:,np.newaxis] - pars[0::3])**2/pars[1::3]**2) / np.sqrt(2*math.pi*pars[1::3]**2) * xwid, axis=1)
     
     pp.plot(xmid, pdf, color='C0')
     
