@@ -23,18 +23,13 @@ def plotgauss(xtrue, indicator, inputs, net=None, like=None, varx=None, twodim=F
     pars = net(netinput).detach().cpu().numpy().flatten()
     
     if twodim:
-      dx  = pars[0::6] - xmid[:,np.newaxis]
-      Fxx = pars[1::6]**2
-    
-      # dy  = pars[2::6] - ymid
-      Fyy = pars[3::6]**2
-    
+      Fxx, Fyy = pars[1::6]**2, pars[3::6]**2
       Fxy = np.arctan(pars[4::6]) / (0.5*math.pi) * pars[1::6] * pars[3::6]
-
-      Cxx = Fyy / (Fxx*Fyy - Fxy*Fxy)
-
       weight = torch.softmax(torch.from_numpy(pars[5::6]),dim=0).numpy()
-      
+
+      dx  = (pars[0::6] if varx == 'nu' else pars[1::6]) - xmid[:,np.newaxis]
+      Cxx = Fxx / (Fxx*Fyy - Fxy*Fxy) if varx == 'nu' else Fyy / (Fxx*Fyy - Fxy*Fxy), 
+
       pdf = np.sum(weight * np.exp(-0.5*dx**2/Cxx) / np.sqrt(2*math.pi*Cxx) * xwid, axis=1)
 
       # logmod = scs.logsumexp(np.log(weight) - 0.5*(Fxx*dx*dx + Fyy*dy*dy + 2*Fxy*dx*dy) + 0.5*np.log(Fxx*Fyy - Fxy*Fxy), axis=2)
