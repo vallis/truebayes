@@ -1,4 +1,5 @@
 import math
+import types
 
 import numpy as np
 import matplotlib.pyplot as pp
@@ -7,11 +8,12 @@ import torch
 
 from truebayes.geometry import xmid, xwid
 
-def plotgauss(xtrue, indicator, inputs, net=None, like=None, xmid=None, istart=0, single=True):  
+def plotgauss(xtrue, indicator, inputs, net=None, like=None, varx=None, istart=0, single=True):  
   pp.figure(figsize=(12,8))
 
-  likes = like(inputs)
-  
+  if isinstance(like, types.FunctionType):
+    like = like(inputs)
+
   for i in range(6):
     pp.subplot(3,2,i+1)
 
@@ -29,7 +31,11 @@ def plotgauss(xtrue, indicator, inputs, net=None, like=None, xmid=None, istart=0
     pp.plot(xmid, pdf, color='C0')
     
     # plot likelihood
-    pp.plot(xmid, likes[istart+i], color='C1')
+    pp.plot(xmid, like[istart+i], color='C1')
 
     # show true x
-    pp.axvline(xtrue[istart+i], color='C2', ls=':')
+    if xtrue.ndim == 2:
+      ix = ['Mc','nu','chi1','chi2'].index(varx)
+      pp.axvline(xtrue[istart+i, ix], color='C2', ls=':')
+    else:
+      pp.axvline(xtrue[istart+i], color='C2', ls=':')

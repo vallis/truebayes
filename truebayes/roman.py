@@ -1,11 +1,16 @@
 import os
+import time
+import pkg_resources
 
 import numpy as np
+
 import torch
+import torch.optim as optim
 
 import truebayes
 from truebayes.network import makenet
 from truebayes.utils import numpy2cuda
+from truebayes.geometry import qdim, xstops
 
 # load the standard ROMAN network
 
@@ -15,15 +20,16 @@ alvin = makenet(layers, softmax=False)
 
 ar, ai = alvin(), alvin()
 
-ar.load_state_dict(torch.load(os.path.join(truebayes.__path__[0], 'data/4d-network/ar-state.pt')))
-ai.load_state_dict(torch.load(os.path.join(truebayes.__path__[0], 'data/4d-network/ai-state.pt')))
+datadir = pkg_resources.resource_filename(__name__, 'data/')
+ar.load_state_dict(torch.load(os.path.join(datadir, '4d-network/ar-state.pt')))
+ai.load_state_dict(torch.load(os.path.join(datadir, '4d-network/ai-state.pt')))
 
 ar.eval()
 ai.eval()
 
 
-def syntrain_snr(snr=[8,12], size=100000, varx='Mc', nets=None, seed=None, noise=1, varall=False,
-             region=[[0.2,0.5],[0.2,0.25],[-1,1],[-1,1]], single=True):
+def syntrain(snr=[8,12], size=100000, varx='Mc', nets=(ar, ai), seed=None, noise=1, varall=False,
+             region=[[0.2,0.5], [0.2,0.25], [-1,1], [-1,1]], single=True):
   """Makes a training set using the ROMAN NN. It returns labels (for `varx`,
   or for all if `varall=True`), indicator vectors, and ROM coefficients
   (with `snr` and `noise`). Note that the coefficients are kept on the GPU.
@@ -92,11 +98,16 @@ def syntrain_snr(snr=[8,12], size=100000, varx='Mc', nets=None, seed=None, noise
       return xr[:,ix], px, alphas
 
 
-def syntrainer(net, syntrain, lossfunction=lossfunction,
-               batchsize=25000, iterations=300, initstep=1e-3, finalv=1e-5, clipgradient=None, validation=None, single=True):
+def syntrainer(net, syntrain, lossfunction=None, iterations=300, 
+               batchsize=None, initstep=1e-3, finalv=1e-5, clipgradient=None, validation=None,
+               seed=None, single=True):
   """Trains network NN against training sets obtained from `syntrain`,
   iterating at most `iterations`; stops if the derivative of loss
   (averaged over 20 epochs) becomes less than `finalv`."""
+
+  if seed is not None:
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
   indicatorloss = 'l' in lossfunction.__annotations__ and lossfunction.__annotations__['l'] == 'indicator'  
   
@@ -116,7 +127,10 @@ def syntrainer(net, syntrain, lossfunction=lossfunction,
     xtrue, indicator, inputs = syntrain()
     labels = numpy2cuda(indicator if indicatorloss else xtrue, single)
 
-    batches = inputs.shape[0]//batchsize
+    if batchsize is None:
+      batchsize = inputs.shape[0]
+    batches = inputs.shape[0] // batchsize
+
     averaged_loss = 0.0    
     
     for i in range(batches):
