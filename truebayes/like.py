@@ -80,7 +80,11 @@ def synmean(a, syntrain, iterations=1000000):
       alphanorm = torch.sum(alphareal*alphareal + alphaimag*alphaimag, dim=1)
 
       # [like] = nbatch x nsignals = [(nbatch x nbasis) @ (nbasis x nsignals) + (nbatch x 1) + nsignals]
-      like = alphareal @ areal + alphaimag @ aimag - 0.5*alphanorm.unsqueeze(1) - 0.5*anorm
+      # like = alphareal @ areal + alphaimag @ aimag - 0.5*alphanorm.unsqueeze(1) - 0.5*anorm
+      like = alphareal @ areal
+      like += alphaimag @ aimag
+      like -= 0.5*alphanorm.unsqueeze(1)
+      like -= 0.5*anorm
 
       if adapt is None:
         adapt = torch.max(like, dim=0)[0]

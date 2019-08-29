@@ -27,8 +27,8 @@ def plotgauss(xtrue, indicator, inputs, net=None, like=None, varx=None, twodim=F
       Fxy = np.arctan(pars[4::6]) / (0.5*math.pi) * pars[1::6] * pars[3::6]
       weight = torch.softmax(torch.from_numpy(pars[5::6]),dim=0).numpy()
 
-      dx  = (pars[0::6] if varx == 'nu' else pars[1::6]) - xmid[:,np.newaxis]
-      Cxx = Fxx / (Fxx*Fyy - Fxy*Fxy) if varx == 'nu' else Fyy / (Fxx*Fyy - Fxy*Fxy), 
+      dx  = (pars[2::6] if varx == 'nu' else pars[0::6]) - xmid[:,np.newaxis]
+      Cxx = Fxx / (Fxx*Fyy - Fxy*Fxy) if varx == 'nu' else Fyy / (Fxx*Fyy - Fxy*Fxy) 
 
       pdf = np.sum(weight * np.exp(-0.5*dx**2/Cxx) / np.sqrt(2*math.pi*Cxx) * xwid, axis=1)
 
