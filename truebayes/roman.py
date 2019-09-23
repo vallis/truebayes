@@ -21,8 +21,13 @@ alvin = makenet(layers, softmax=False)
 ar, ai = alvin(), alvin()
 
 datadir = pkg_resources.resource_filename(__name__, 'data/')
-ar.load_state_dict(torch.load(os.path.join(datadir, '4d-network/ar-state.pt')))
-ai.load_state_dict(torch.load(os.path.join(datadir, '4d-network/ai-state.pt')))
+
+if torch.cuda.is_available():
+  ar.load_state_dict(torch.load(os.path.join(datadir, '4d-network/ar-state.pt')))
+  ai.load_state_dict(torch.load(os.path.join(datadir, '4d-network/ai-state.pt')))
+else:
+  ar.load_state_dict(torch.load(os.path.join(datadir, '4d-network/ar-state.pt'), map_location=torch.device('cpu')))
+  ai.load_state_dict(torch.load(os.path.join(datadir, '4d-network/ai-state.pt'), map_location=torch.device('cpu')))
 
 ar.eval()
 ai.eval()
@@ -35,15 +40,17 @@ def syntrain(snr=[8,12], size=100000, varx='Mc', nets=(ar, ai), seed=None, noise
   (with `snr` and `noise`). Note that the coefficients are kept on the GPU.
   Parameters are sampled randomly within `region`."""
 
+  device = 'cuda:0' if torch.cuda.is_available() else 'cpu:0'
+
   if seed is not None:
     np.random.seed(seed)
     torch.manual_seed(seed)
 
   with torch.no_grad():
-    xs = torch.zeros((size,4),dtype=torch.float,device='cuda:0')
+    xs = torch.zeros((size,4), dtype=torch.float, device=device)
     
     for i,r in enumerate(region):
-      xs[:,i] = r[0] + (r[1] - r[0])*torch.rand((size,), dtype=torch.float, device='cuda:0')
+      xs[:,i] = r[0] + (r[1] - r[0])*torch.rand((size,), dtype=torch.float, device=device)
     
     # handle banks with reduced dimensionality 
     for i in range(len(region),4):
@@ -51,13 +58,13 @@ def syntrain(snr=[8,12], size=100000, varx='Mc', nets=(ar, ai), seed=None, noise
 
     snrs = numpy2cuda(np.random.uniform(*snr,size=size))
       
-    alphas = torch.zeros((size, 241*2), dtype=torch.float if single else torch.double, device='cuda:0')
+    alphas = torch.zeros((size, 241*2), dtype=torch.float if single else torch.double, device=device)
 
     alphar, alphai = nets[0](xs), nets[1](xs)
     norm = torch.sqrt(torch.sum(alphar*alphar + alphai*alphai,dim=1))
  
-    alphas[:,0::2] = snrs[:,np.newaxis] * alphar / norm[:,np.newaxis] + noise * torch.randn((size,241), device='cuda:0')
-    alphas[:,1::2] = snrs[:,np.newaxis] * alphai / norm[:,np.newaxis] + noise * torch.randn((size,241), device='cuda:0')
+    alphas[:,0::2] = snrs[:,np.newaxis] * alphar / norm[:,np.newaxis] + noise * torch.randn((size,241), device=device)
+    alphas[:,1::2] = snrs[:,np.newaxis] * alphai / norm[:,np.newaxis] + noise * torch.randn((size,241), device=device)
   
   xr = np.zeros((size, 5),'d')
   xr[:,:4] = xs.detach().cpu().double().numpy()
