@@ -23,11 +23,11 @@ ar, ai = alvin(), alvin()
 datadir = pkg_resources.resource_filename(__name__, 'data/')
 
 if torch.cuda.is_available():
-  ar.load_state_dict(torch.load(os.path.join(datadir, '4d-network/ar-state.pt')))
-  ai.load_state_dict(torch.load(os.path.join(datadir, '4d-network/ai-state.pt')))
+  ar.load_state_dict(torch.load(os.path.join(datadir, 'roman/ar-state.pt')))
+  ai.load_state_dict(torch.load(os.path.join(datadir, 'roman/ai-state.pt')))
 else:
-  ar.load_state_dict(torch.load(os.path.join(datadir, '4d-network/ar-state.pt'), map_location=torch.device('cpu')))
-  ai.load_state_dict(torch.load(os.path.join(datadir, '4d-network/ai-state.pt'), map_location=torch.device('cpu')))
+  ar.load_state_dict(torch.load(os.path.join(datadir, 'roman/ar-state.pt'), map_location=torch.device('cpu')))
+  ai.load_state_dict(torch.load(os.path.join(datadir, 'roman/ai-state.pt'), map_location=torch.device('cpu')))
 
 ar.eval()
 ai.eval()
